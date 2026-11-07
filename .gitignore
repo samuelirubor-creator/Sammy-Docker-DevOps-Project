@@ -1,0 +1,37 @@
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
+*.tfvars.json
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# SSH keys and secrets
+*.pem
+*.key
+.env
+.env.*
+!.env.example
+
+# Ansible
+*.retry
+
+# Editors
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Terraform plan files
+tfplan

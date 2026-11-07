@@ -1,0 +1,72 @@
+
+---
+- name: Deploy Flask Docker application
+  hosts: webservers
+  become: true
+
+  vars:
+    app_directory: /opt/sammy-flask-app
+    image_name: sammy-flask-app:v1
+    container_name: sammy-flask-container
+
+  tasks:
+    - name: Create application directory
+      ansible.builtin.file:
+        path: "{{ app_directory }}"
+        state: directory
+        mode: "0755"
+
+    - name: Copy Python application
+      ansible.builtin.copy:
+        src: ../docker/app.py
+        dest: "{{ app_directory }}/app.py"
+        mode: "0644"
+      register: app_copy
+
+    - name: Copy Python dependencies
+      ansible.builtin.copy:
+        src: ../docker/requirements.txt
+        dest: "{{ app_directory }}/requirements.txt"
+        mode: "0644"
+      register: requirements_copy
+
+    - name: Copy Dockerfile
+      ansible.builtin.copy:
+        src: ../docker/Dockerfile
+        dest: "{{ app_directory }}/Dockerfile"
+        mode: "0644"
+      register: dockerfile_copy
+
+    - name: Build Docker image
+      ansible.builtin.command:
+        cmd: docker build -t {{ image_name }} .
+        chdir: "{{ app_directory }}"
+      when: >
+        app_copy.changed or
+        requirements_copy.changed or
+        dockerfile_copy.changed
+      register: image_build
+
+    - name: Check whether application container exists
+      ansible.builtin.command:
+        cmd: docker container inspect {{ container_name }}
+      register: container_check
+      changed_when: false
+      failed_when: false
+
+    - name: Remove old application container when image changes
+      ansible.builtin.command:
+        cmd: docker rm -f {{ container_name }}
+      when: >
+        container_check.rc == 0 and
+        image_build is changed
+
+    - name: Start application container
+      ansible.builtin.command:
+        cmd: docker run -d --restart unless-stopped
+             --name {{ container_name }}
+             -p 80:5000
+             {{ image_name }}
+      when: >
+        container_check.rc != 0 or
+        image_build is changed
