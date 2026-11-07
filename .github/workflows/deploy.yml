@@ -1,0 +1,43 @@
+name: Sammy AWS DevOps CI Pipeline
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    name: Build and Test Flask Application
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r docker/requirements.txt
+
+      - name: Check Python syntax
+        run: python -m py_compile docker/app.py
+
+      - name: Build Docker image
+        run: docker build -t sammy-flask-app:latest ./docker
+
+      - name: Test Flask health endpoint
+        run: |
+          docker run -d --name flask-test -p 127.0.0.1:5000:5000 sammy-flask-app:latest
+          for i in {1..15}; do
+            if curl --fail --silent http://127.0.0.1:5000/health; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs flask-test
+          exit 1
